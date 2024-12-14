@@ -2,7 +2,7 @@ Metadata-Version: 2.1
 Name: higashi
 Version: 0.1.0a0
 Summary: Higashi: Multiscale and integrative scHi-C analysis
-Home-page: https://github.com/ma-compbio/Higashi
+Home-page: https://github.com/GMFranceschini/Higashi
 Author: Ruochi Zhang
 Author-email: ruochiz@andrew.cmu.edu
 License: MIT

@@ -4,7 +4,7 @@ setup(
     name='higashi',
     version='0.1.0a0',
     description='Higashi: Multiscale and integrative scHi-C analysis',
-    url='https://github.com/ma-compbio/Higashi',
+    url='https://github.com/GMFranceschini/Higashi',
     include_package_data=True,
     python_requires='>=3.9',
     packages=find_packages(),

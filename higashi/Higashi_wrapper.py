@@ -44,27 +44,48 @@ def parse_args():
 
 
 def get_free_gpu(num=1, change_cur=True):
-	# os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free > ./tmp')
-	# memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
-	os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Total > ./tmp1')
-	os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Used > ./tmp2')
-	memory_all = [int(x.split()[2]) for x in open('tmp1', 'r').readlines()]
-	memory_used = [int(x.split()[2]) for x in open('tmp2', 'r').readlines()]
-	memory_available = [m1 - m2 for m1, m2 in zip(memory_all, memory_used)]
-	if len(memory_available) > 0:
-		max_mem = np.max(memory_available)
-		if num == 1 and change_cur:
-			ids = np.where(memory_available == max_mem)[0]
-			chosen_id = int(np.random.choice(ids, 1)[0])
-			print("setting to gpu:%d" % chosen_id)
-			torch.cuda.set_device(chosen_id)
-			return "cuda:%d" % chosen_id
-		else:
-			ids = np.argsort(memory_available)[::-1][:num]
-			return ids
-	
-	else:
-		return
+    # Get the list of allocated GPUs from CUDA_VISIBLE_DEVICES
+    visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES', None)
+    
+    if visible_devices is None:
+        print("No GPUs allocated. Using CPU.")
+        return None  # No GPUs are allocated; fallback to CPU
+
+    # Map visible devices to physical device IDs
+    visible_devices = [int(x) for x in visible_devices.split(',')]
+
+    # Query memory for allocated GPUs
+    free_memory = []
+    for gpu_id in visible_devices:
+        try:
+            props = torch.cuda.get_device_properties(gpu_id)
+            total_mem = props.total_memory  # Total GPU memory
+            reserved_mem = torch.cuda.memory_reserved(gpu_id)  # Reserved memory
+            used_mem = torch.cuda.memory_allocated(gpu_id)  # Used memory
+            available_mem = total_mem - reserved_mem  # Free memory
+            free_memory.append(available_mem)
+        except Exception as e:
+            print(f"Error querying GPU {gpu_id}: {e}")
+            free_memory.append(0)
+
+    if len(free_memory) > 0:
+        max_mem = np.max(free_memory)
+        if num == 1 and change_cur:
+            # Select a single GPU with the maximum free memory
+            ids = np.where(np.array(free_memory) == max_mem)[0]
+            chosen_id = int(np.random.choice(ids, 1)[0])
+            global_gpu_id = visible_devices[chosen_id]  # Map back to global GPU ID
+            print(f"Setting to GPU:{global_gpu_id}")
+            torch.cuda.set_device(global_gpu_id)
+            return f"cuda:{global_gpu_id}"
+        else:
+            # Return the top `num` GPUs with the most free memory
+            ids = np.argsort(free_memory)[::-1][:num]
+            chosen_ids = [visible_devices[i] for i in ids]  # Map to global GPU IDs
+            return chosen_ids
+    else:
+        print("No GPUs available. Using CPU.")
+        return None
 
 
 
